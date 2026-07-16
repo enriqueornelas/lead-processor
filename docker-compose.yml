@@ -4,8 +4,8 @@ services:
     image: lead-processor:latest
     container_name: lead-processor
     ports:
-      # Host port is assigned randomly; container still listens on 3000
-      - "3000"
+      # Stable host port (same hash as local projectPort for "lead-processor") → container 3000
+      - "8589:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
