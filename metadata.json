@@ -1,0 +1,6 @@
+{
+  "name": "Lead Processor",
+  "description": "A minimalist web application for parsing pasted CSV leads, managing contact notes, determining next steps, generating custom website sales pitches, and adding follow-up tasks to Google Calendar.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

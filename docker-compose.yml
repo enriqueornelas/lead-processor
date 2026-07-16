@@ -1,0 +1,18 @@
+services:
+  lead-processor:
+    build: .
+    image: lead-processor:latest
+    container_name: lead-processor
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATA_DIR=/data
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - lead-processor-data:/data
+    restart: unless-stopped
+
+volumes:
+  lead-processor-data:
