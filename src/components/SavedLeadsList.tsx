@@ -210,6 +210,12 @@ export default function SavedLeadsList({
                                     <span>Host: ${lead.hostingRate}/mo</span>
                                   </>
                                 )}
+                                {lead.firstMonthFree && (
+                                  <>
+                                    <span className="opacity-40">•</span>
+                                    <span>1st mo free</span>
+                                  </>
+                                )}
                               </span>
                             )}
                           </div>

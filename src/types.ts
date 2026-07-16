@@ -24,6 +24,7 @@ export interface Lead {
   // Custom fields filled during processing
   flatRate?: number;
   hostingRate?: number;
+  firstMonthFree?: boolean;
   email?: string;
   ownerName?: string;
   nextSteps?: string;

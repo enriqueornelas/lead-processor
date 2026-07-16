@@ -24,7 +24,9 @@ import {
   RefreshCw,
   Video,
   Mail,
-  User
+  User,
+  Copy,
+  ClipboardCheck
 } from 'lucide-react';
 import { Lead } from '../types';
 import { parseLeadCSV } from '../utils/csvParser';
@@ -59,6 +61,7 @@ export default function LeadProcessor({
   // Lead custom configurations
   const [flatRate, setFlatRate] = useState<number>(1500);
   const [hostingRate, setHostingRate] = useState<number>(99);
+  const [firstMonthFree, setFirstMonthFree] = useState(false);
   const [outcomeEmail, setOutcomeEmail] = useState('');
   const [outcomePhone, setOutcomePhone] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -69,6 +72,7 @@ export default function LeadProcessor({
   // Progress states
   const [progressPercent, setProgressPercent] = useState(0);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [summaryCopied, setSummaryCopied] = useState(false);
 
   // Call Recording state variables
   const [isRecording, setIsRecording] = useState(false);
@@ -92,12 +96,14 @@ export default function LeadProcessor({
       // Reset state for new lead
       setFlatRate(1500);
       setHostingRate(99);
+      setFirstMonthFree(false);
       setOutcomeEmail('');
       setOutcomePhone(parsed.phone || '');
       setOwnerName('');
       setNextSteps('');
       setFollowUpDate(defaultFollowUpDate());
       setFollowUpTime(DEFAULT_FOLLOW_UP_TIME);
+      setSummaryCopied(false);
       // Reset recording state
       resetRecording();
     } else {
@@ -110,12 +116,14 @@ export default function LeadProcessor({
     if (activeLead) {
       setFlatRate(activeLead.flatRate || 1500);
       setHostingRate(activeLead.hostingRate || 99);
+      setFirstMonthFree(!!activeLead.firstMonthFree);
       setOutcomeEmail(activeLead.email || '');
       setOutcomePhone(activeLead.phone || '');
       setOwnerName(activeLead.ownerName || '');
       setNextSteps(activeLead.nextSteps || '');
       setFollowUpDate(activeLead.followUpDate || defaultFollowUpDate());
       setFollowUpTime(activeLead.followUpTime || DEFAULT_FOLLOW_UP_TIME);
+      setSummaryCopied(false);
       setCsvInput('');
       resetRecording();
     }
@@ -214,6 +222,92 @@ export default function LeadProcessor({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getFirstName = () => {
+    const trimmed = ownerName.trim();
+    if (!trimmed) return '';
+    return trimmed.split(/\s+/)[0];
+  };
+
+  const formatMeetingDate = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!y || !m || !d) return dateStr;
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const formatMeetingTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hStr, mStr] = timeStr.split(':');
+    const h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10) || 0;
+    if (Number.isNaN(h)) return timeStr;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+  };
+
+  const buildClientSummary = () => {
+    if (!activeLead) return '';
+    const firstName = getFirstName();
+    const greeting = firstName ? `Hey ${firstName}` : 'Hey';
+    const meetingDate = formatMeetingDate(followUpDate);
+    const meetingTime = formatMeetingTime(followUpTime);
+    const whenLine = meetingTime
+      ? `${meetingDate} at ${meetingTime}`
+      : meetingDate;
+
+    const hostingLine = firstMonthFree
+      ? `Monthly hosting: $${hostingRate}/mo (first month free)`
+      : `Monthly hosting: $${hostingRate}/mo`;
+
+    const lines = [
+      `${greeting}, thank you so much for meeting with me today.`,
+      '',
+      `Just letting you know that we have our follow-up meeting set up for ${whenLine}.`,
+      '',
+      `Here's a quick summary of what we discussed for ${activeLead.name}:`,
+      `• Website build: $${flatRate} flat rate`,
+      `• ${hostingLine}`,
+    ];
+
+    if (nextSteps.trim()) {
+      lines.push('');
+      lines.push(`Next steps: ${nextSteps.trim()}`);
+    }
+
+    lines.push('');
+    lines.push('Looking forward to chatting again. Feel free to reach out if you have any questions before then!');
+
+    return lines.join('\n');
+  };
+
+  const handleCopySummary = async () => {
+    const summary = buildClientSummary();
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setSummaryCopied(true);
+      setTimeout(() => setSummaryCopied(false), 2500);
+    } catch {
+      // Fallback for older browsers / denied clipboard permission
+      const textarea = document.createElement('textarea');
+      textarea.value = summary;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setSummaryCopied(true);
+      setTimeout(() => setSummaryCopied(false), 2500);
+    }
+  };
+
   // Generate Google Calendar Link ready to open in new tab
   const getGoogleCalendarUrl = () => {
     if (!activeLead) return '';
@@ -237,6 +331,10 @@ export default function LeadProcessor({
 
     const datesParam = dateFormatted ? `&dates=${startDateTime}/${endDateTime}` : '';
     
+    const hostingDetail = firstMonthFree
+      ? `Hosting Rate Offered: $${hostingRate}/mo (first month free)\n`
+      : `Hosting Rate Offered: $${hostingRate}/mo\n`;
+
     const details = encodeURIComponent(
       `Business: ${activeLead.name}\n` +
       `Category: ${activeLead.category}\n` +
@@ -245,8 +343,8 @@ export default function LeadProcessor({
       `Email: ${outcomeEmail || 'N/A'}\n` +
       `Maps: ${activeLead.mapsUrl || 'N/A'}\n` +
       `Flat Rate Offered: $${flatRate}\n` +
-      `Hosting Rate Offered: $${hostingRate}/mo\n\n` +
-      `Call Notes / Next Steps:\n${nextSteps || 'No custom notes provided.'}`
+      hostingDetail +
+      `\nCall Notes / Next Steps:\n${nextSteps || 'No custom notes provided.'}`
     );
 
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}${datesParam}&details=${details}&sf=true&output=xml`;
@@ -273,6 +371,7 @@ export default function LeadProcessor({
         ...activeLead,
         flatRate,
         hostingRate,
+        firstMonthFree,
         phone: outcomePhone,
         email: outcomeEmail,
         ownerName,
@@ -536,6 +635,25 @@ export default function LeadProcessor({
                 </span>
               </div>
             </div>
+
+            <label
+              htmlFor="first-month-free-checkbox"
+              className="mt-6 flex items-start space-x-3 cursor-pointer select-none"
+            >
+              <input
+                id="first-month-free-checkbox"
+                type="checkbox"
+                checked={firstMonthFree}
+                onChange={(e) => setFirstMonthFree(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400 cursor-pointer"
+              />
+              <span className="flex flex-col">
+                <span className="text-sm font-sans text-zinc-800">First month free</span>
+                <span className="text-[11px] text-zinc-400 font-sans leading-normal">
+                  Waive the first month of hosting — billing starts the following month.
+                </span>
+              </span>
+            </label>
           </div>
 
           {/* Card 3: Interactive Call Session Recording Widget */}
@@ -797,6 +915,45 @@ export default function LeadProcessor({
                 <span>Save Lead Record</span>
               </button>
             </div>
+          </div>
+
+          {/* Client follow-up message — copy & paste ready */}
+          <div id="client-summary-card" className="bg-white border border-zinc-100 rounded-2xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.01)]">
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <div className="flex items-center space-x-3">
+                <div className="h-2 w-2 rounded-full bg-zinc-900" />
+                <h3 className="text-lg font-display font-medium text-zinc-900 tracking-tight">Client Follow-Up Message</h3>
+              </div>
+              <button
+                id="btn-copy-client-summary"
+                type="button"
+                onClick={handleCopySummary}
+                className="inline-flex items-center space-x-2 bg-[#fafaf9] border border-zinc-100 hover:bg-zinc-100 text-zinc-800 text-xs font-sans px-3.5 py-2 rounded-xl transition-all shadow-sm cursor-pointer shrink-0"
+              >
+                {summaryCopied ? (
+                  <>
+                    <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5 text-zinc-500" />
+                    <span>Copy message</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-500 font-sans leading-relaxed mb-4">
+              Auto-generated from the fields above. Copy and paste into a text or email.
+            </p>
+
+            <pre
+              id="client-summary-preview"
+              className="w-full whitespace-pre-wrap bg-[#fafaf9] border border-zinc-100 rounded-xl p-4 text-sm font-sans text-zinc-700 leading-relaxed"
+            >
+              {buildClientSummary()}
+            </pre>
           </div>
         </motion.div>
       )}

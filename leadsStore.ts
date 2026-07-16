@@ -25,6 +25,7 @@ export interface LeadRecord {
   placeId: string;
   flatRate?: number;
   hostingRate?: number;
+  firstMonthFree?: boolean;
   email?: string;
   ownerName?: string;
   nextSteps?: string;
