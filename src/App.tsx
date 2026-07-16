@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -11,16 +11,20 @@ import {
   Upload, 
   Download, 
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import { Lead, ViewMode } from './types';
 import LeadProcessor from './components/LeadProcessor';
 import SavedLeadsList from './components/SavedLeadsList';
+import LoginGate from './components/LoginGate';
 import {
   fetchAppData,
   saveLead,
   removeLead,
   importLeadsApi,
   toggleProgress,
+  fetchAuthStatus,
+  logout,
 } from './api';
 
 export default function App() {
@@ -30,52 +34,90 @@ export default function App() {
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [completedLeads, setCompletedLeads] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
   const applyData = (data: { leads: Lead[]; completed: Record<string, boolean> }) => {
     setSavedLeads(data.leads || []);
     setCompletedLeads(data.completed || {});
   };
 
-  // Load from persistent backend; migrate browser localStorage once if server is empty
+  const loadDirectory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchAppData();
+
+      if ((!data.leads || data.leads.length === 0)) {
+        const local = localStorage.getItem('lead_processor_saved_leads');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const migrated = await importLeadsApi(parsed);
+              applyData(migrated);
+              localStorage.removeItem('lead_processor_saved_leads');
+              return;
+            }
+          } catch (e) {
+            console.error('Failed to migrate localStorage leads:', e);
+          }
+        }
+      }
+
+      applyData(data);
+    } catch (e: any) {
+      if (e?.authRequired) {
+        setAuthenticated(false);
+      } else {
+        console.error('Failed to load leads from server:', e);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const data = await fetchAppData();
+        const status = await fetchAuthStatus();
         if (cancelled) return;
-
-        if ((!data.leads || data.leads.length === 0)) {
-          const local = localStorage.getItem('lead_processor_saved_leads');
-          if (local) {
-            try {
-              const parsed = JSON.parse(local);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const migrated = await importLeadsApi(parsed);
-                if (!cancelled) {
-                  applyData(migrated);
-                  localStorage.removeItem('lead_processor_saved_leads');
-                }
-                return;
-              }
-            } catch (e) {
-              console.error('Failed to migrate localStorage leads:', e);
-            }
-          }
-        }
-
-        applyData(data);
+        const ok = !status.configured || status.authenticated;
+        setAuthenticated(ok);
+        setAuthChecked(true);
+        if (ok) await loadDirectory();
+        else setLoading(false);
       } catch (e) {
-        console.error('Failed to load leads from server:', e);
-      } finally {
-        if (!cancelled) setLoading(false);
+        console.error('Failed to check auth status:', e);
+        if (!cancelled) {
+          setAuthChecked(true);
+          setLoading(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadDirectory]);
+
+  const handleLoginSuccess = async () => {
+    setAuthenticated(true);
+    await loadDirectory();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      console.error('Failed to logout:', e);
+    }
+    setAuthenticated(false);
+    setSavedLeads([]);
+    setCompletedLeads({});
+    setActiveLead(null);
+  };
 
   const handleSaveLead = async (lead: Lead) => {
     try {
@@ -134,7 +176,6 @@ export default function App() {
     }
   };
 
-  // Backup file handlers
   const handleExportBackup = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedLeads, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -163,6 +204,18 @@ export default function App() {
       };
     }
   };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#fafaf9] flex items-center justify-center text-xs font-mono text-zinc-400">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <LoginGate onSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div id="root-app-layout" className="min-h-screen bg-[#fafaf9] text-zinc-900 font-sans antialiased flex flex-col md:flex-row">
@@ -309,6 +362,16 @@ export default function App() {
               onChange={handleImportBackup}
             />
           </label>
+
+          <button
+            id="sidebar-btn-logout"
+            onClick={handleLogout}
+            className="hover:text-zinc-900 flex items-center space-x-1 cursor-pointer"
+            title="Lock workspace"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Lock</span>
+          </button>
         </div>
       </aside>
 

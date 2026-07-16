@@ -4,11 +4,15 @@ services:
     image: lead-processor:latest
     container_name: lead-processor
     ports:
-      - "3000:3000"
+      # Host port is assigned randomly; container still listens on 3000
+      - "3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DATA_DIR=/data
+      - MASTER_PASSWORD=${MASTER_PASSWORD:?Set MASTER_PASSWORD}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     volumes:
       - lead-processor-data:/data

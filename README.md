@@ -7,9 +7,11 @@ Full-stack CRM workspace for parsing lead CSVs, saving contacts, and generating 
 **Prerequisites:** Node.js 20+
 
 1. Install dependencies: `npm install`
-2. Copy `.env.example` to `.env` and set `GEMINI_API_KEY` if you want AI pitches
+2. Copy `.env.example` to `.env` and set `MASTER_PASSWORD` (and optionally `GEMINI_API_KEY`)
 3. Start: `npm run dev`
-4. Open http://localhost:3000
+4. Open http://localhost:3000 and unlock with the master password
+
+The password is verified only on the server. It is never embedded in the frontend bundle.
 
 Production build:
 
@@ -23,12 +25,22 @@ Data is saved under `./data/leads.json` (or `DATA_DIR`).
 ## Docker
 
 ```bash
-# Optional: put GEMINI_API_KEY in a .env file next to docker-compose.yml
+# Put MASTER_PASSWORD (required) and optional GEMINI_API_KEY in a .env file next to docker-compose.yml
 docker compose up -d --build
 ```
 
-App: http://localhost:3000  
+App: check the published host port (random) → container `3000`  
 Persistent volume: `lead-processor-data` → `/data` in the container.
+
+Find the assigned port:
+
+```bash
+docker compose port lead-processor 3000
+# or
+docker ps
+```
+
+In Portainer: open the container → **Published Ports**.
 
 ## Deploy with Portainer
 
@@ -39,9 +51,10 @@ Persistent volume: `lead-processor-data` → `/data` in the container.
 3. Name it `lead-processor`.
 4. Choose **Repository**, paste the repo URL, set the compose path to `docker-compose.yml`.
 5. Under **Environment variables**, add:
+   - `MASTER_PASSWORD` = your global password (**required**)
    - `GEMINI_API_KEY` = your key (optional)
 6. Click **Deploy the stack**.
-7. Open the published port (`3000` by default) on your host/IP.
+7. Open the published host port shown on the container (mapped randomly to container `3000`).
 
 Portainer will build the image from the `Dockerfile` and create the named volume for lead data.
 
@@ -63,11 +76,12 @@ services:
     image: YOUR_REGISTRY/lead-processor:latest
     container_name: lead-processor
     ports:
-      - "3000:3000"
+      - "3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DATA_DIR=/data
+      - MASTER_PASSWORD=your_master_password_here
       - GEMINI_API_KEY=your_key_here
     volumes:
       - lead-processor-data:/data
@@ -93,6 +107,6 @@ docker save lead-processor:latest -o lead-processor.tar
 
 ### After deploy
 
-- Map host port `3000` (or change it in compose, e.g. `"8080:3000"`).
+- Host port is assigned randomly (container still uses `3000`). Check it in Portainer under the container’s published ports, or with `docker compose port lead-processor 3000`.
 - Leads persist in the Docker volume `lead-processor-data`.
 - Existing browser `localStorage` leads are migrated once on first load if the server DB is empty.

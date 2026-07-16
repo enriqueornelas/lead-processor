@@ -17,6 +17,15 @@ import {
   toggleCompleted,
   LeadRecord,
 } from "./leadsStore";
+import {
+  isAuthConfigured,
+  isAuthenticated,
+  passwordMatches,
+  createSessionToken,
+  setSessionCookie,
+  clearSessionCookie,
+  requireAuth,
+} from "./auth";
 
 dotenv.config();
 
@@ -24,6 +33,46 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "10mb" }));
+
+if (!isAuthConfigured()) {
+  console.warn(
+    "WARNING: MASTER_PASSWORD is not set. The app is open without a login gate. Set MASTER_PASSWORD in the environment."
+  );
+} else {
+  console.log("Master password auth enabled (password stays server-side only).");
+}
+
+// --- Auth API (public) ---
+
+app.get("/api/auth/status", (req, res) => {
+  return res.json({
+    configured: isAuthConfigured(),
+    authenticated: isAuthenticated(req),
+  });
+});
+
+app.post("/api/auth/login", (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(500).json({ error: "MASTER_PASSWORD is not configured on the server." });
+  }
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!passwordMatches(password)) {
+    return res.status(401).json({ error: "Invalid password." });
+  }
+  setSessionCookie(res, createSessionToken());
+  return res.json({ ok: true });
+});
+
+app.post("/api/auth/logout", (_req, res) => {
+  clearSessionCookie(res);
+  return res.json({ ok: true });
+});
+
+// Protect all other API routes
+app.use("/api", (req, res, next) => {
+  if (req.path.startsWith("/auth/")) return next();
+  return requireAuth(req, res, next);
+});
 
 // Initialize Gemini safely (lazy init / check key)
 let ai: GoogleGenAI | null = null;
