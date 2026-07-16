@@ -327,7 +327,7 @@ export default function App() {
                         {lead.name}
                       </span>
                       <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-tight block">
-                        {lead.category} • Flat: ${lead.flatRate || 1500}
+                        {lead.category} • Flat: ${lead.flatRate || 750}
                       </span>
                     </div>
                   </div>

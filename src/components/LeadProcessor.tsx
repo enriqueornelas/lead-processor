@@ -59,8 +59,8 @@ export default function LeadProcessor({
   const [parseError, setParseError] = useState('');
   
   // Lead custom configurations
-  const [flatRate, setFlatRate] = useState<number>(1500);
-  const [hostingRate, setHostingRate] = useState<number>(99);
+  const [flatRate, setFlatRate] = useState('750');
+  const [hostingRate, setHostingRate] = useState('25');
   const [firstMonthFree, setFirstMonthFree] = useState(false);
   const [outcomeEmail, setOutcomeEmail] = useState('');
   const [outcomePhone, setOutcomePhone] = useState('');
@@ -94,8 +94,8 @@ export default function LeadProcessor({
       setParseError('');
       setActiveLead(parsed);
       // Reset state for new lead
-      setFlatRate(1500);
-      setHostingRate(99);
+      setFlatRate('750');
+      setHostingRate('25');
       setFirstMonthFree(false);
       setOutcomeEmail('');
       setOutcomePhone(parsed.phone || '');
@@ -114,8 +114,8 @@ export default function LeadProcessor({
   // Sync state if activeLead is loaded from outside (e.g. from Saved Book)
   useEffect(() => {
     if (activeLead) {
-      setFlatRate(activeLead.flatRate || 1500);
-      setHostingRate(activeLead.hostingRate || 99);
+      setFlatRate(String(activeLead.flatRate ?? 750));
+      setHostingRate(String(activeLead.hostingRate ?? 25));
       setFirstMonthFree(!!activeLead.firstMonthFree);
       setOutcomeEmail(activeLead.email || '');
       setOutcomePhone(activeLead.phone || '');
@@ -369,8 +369,8 @@ export default function LeadProcessor({
     setTimeout(() => {
       const leadToSave: Lead = {
         ...activeLead,
-        flatRate,
-        hostingRate,
+        flatRate: Number(flatRate) || 0,
+        hostingRate: Number(hostingRate) || 0,
         firstMonthFree,
         phone: outcomePhone,
         email: outcomeEmail,
@@ -600,12 +600,11 @@ export default function LeadProcessor({
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-mono">$</span>
                   <input
                     id="flat-rate-input"
-                    type="number"
-                    min="0"
-                    step="100"
+                    type="text"
+                    inputMode="numeric"
                     className="w-full bg-[#fafaf9] border border-zinc-100 rounded-xl py-2.5 pl-8 pr-4 text-sm font-mono text-zinc-800 focus:outline-none focus:border-zinc-300 transition-colors"
                     value={flatRate}
-                    onChange={(e) => setFlatRate(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onChange={(e) => setFlatRate(e.target.value.replace(/[^\d]/g, ''))}
                   />
                 </div>
                 <span className="text-[11px] text-zinc-400 font-sans leading-normal">
@@ -622,12 +621,11 @@ export default function LeadProcessor({
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-mono">$</span>
                   <input
                     id="hosting-rate-input"
-                    type="number"
-                    min="0"
-                    step="5"
+                    type="text"
+                    inputMode="numeric"
                     className="w-full bg-[#fafaf9] border border-zinc-100 rounded-xl py-2.5 pl-8 pr-4 text-sm font-mono text-zinc-800 focus:outline-none focus:border-zinc-300 transition-colors"
                     value={hostingRate}
-                    onChange={(e) => setHostingRate(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onChange={(e) => setHostingRate(e.target.value.replace(/[^\d]/g, ''))}
                   />
                 </div>
                 <span className="text-[11px] text-zinc-400 font-sans leading-normal">

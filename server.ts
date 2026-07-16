@@ -189,14 +189,14 @@ Company Name: ${name}
 Business Category: ${category}
 Rating: ${rating || "N/A"} stars (${reviewCount || 0} reviews)
 Has Existing Website: ${hasWebsiteText}
-Asking Flat Rate: $${flatRate || "1,500"}
+Asking Flat Rate: $${flatRate || "750"}
 
 Write a tailored, highly specific, lightweight cold call or warm messaging script. The tone must be clean, warm, collaborative, and entirely devoid of sleazy sales talk, hype, or generic jargon. 
 
 Include these four precise sections, formatted elegantly in clean Markdown:
 1. **Elevator Pitch** (1-2 friendly, impactful sentences addressing ${name} directly)
 2. **Value Hook** (Explain exactly how a high-converting website helps a ${category} business convert their active local reputation into booked jobs)
-3. **The Proposal** (Elegantly introduce our custom layout development for a simple, flat-rate of $${flatRate || "1,500"} with no recurring monthly lock-ins)
+3. **The Proposal** (Elegantly introduce our custom layout development for a simple, flat-rate of $${flatRate || "750"} with no recurring monthly lock-ins)
 4. **The Next Step** (A soft closing suggestion: a quick, complimentary 5-minute visual homepage sketch or mockup to show them what's possible)
 
 Keep the pitch concise, easy to read off a screen while calling, and under 90 seconds.`;
@@ -213,7 +213,7 @@ Keep the pitch concise, easy to read off a screen while calling, and under 90 se
 "With your amazing rating, potential clients are searching for you daily. ${hasWebsite === "yes" ? "Your current website has a few speed and mobile design bottlenecks that might be turning hot leads away." : "Since you don't have a website listed, you might be missing out on capturing direct local search traffic."} A custom, fully responsive layout will help convert that trust into immediate phone calls and booked appointments."
 
 #### 3. The Proposal
-"We design, build, and optimize custom websites for a transparent, single flat rate of **$${flatRate || "1,500"}** — with absolutely no monthly maintenance fees or lock-in contracts."
+"We design, build, and optimize custom websites for a transparent, single flat rate of **$${flatRate || "750"}** — with absolutely no monthly maintenance fees or lock-in contracts."
 
 #### 4. The Next Step
 "I'd love to put together a quick 5-minute visual concept mock-up of what your new homepage could look like, completely free. If I send that over early next week, would you be open to taking a quick look?"`;
